@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sovereign Ledger | CassAI</title>
+    <style>
+        :root {
+            --matrix: #00FF41; --gold: #D4AF37; --red: #B22222; --bg: #050505;
+        }
+        body {
+            margin: 0; background: var(--bg); color: var(--matrix);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+        }
+        header { padding: 20px; border-bottom: 1px solid var(--red); text-align: center; background: #111; }
+        
+        .balance-card {
+            margin: 20px; padding: 30px; border: 2px solid var(--gold);
+            background: rgba(212, 175, 55, 0.05); text-align: center;
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+        }
+        .oush-val { font-size: 3.5rem; font-weight: bold; color: var(--gold); text-shadow: 0 0 15px var(--gold); }
+        
+        .transaction-feed {
+            flex: 1; margin: 0 20px 20px; border: 1px solid #333;
+            background: rgba(0,0,0,0.8); padding: 15px; overflow-y: auto;
+        }
+        .tx-line { 
+            display: flex; justify-content: space-between; border-bottom: 1px solid #222;
+            padding: 10px 0; font-size: 0.8rem;
+        }
+        .tx-plus { color: var(--matrix); }
+        
+        .mint-btn {
+            width: calc(100% - 40px); margin: 0 20px 20px; padding: 20px;
+            background: transparent; border: 2px solid var(--matrix);
+            color: var(--matrix); font-family: inherit; font-weight: bold;
+            cursor: pointer; text-transform: uppercase;
+        }
+        .mint-btn:active { background: var(--matrix); color: #000; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h2 style="margin:0;">HEARTS_LEDGER_v1.0</h2>
+    <div style="font-size:0.6rem; color:var(--red);">// DECENTRALIZED STRETFORD RESERVE //</div>
+</header>
+
+<div class="balance-card">
+    <div style="font-size: 0.8rem; letter-spacing: 2px;">TOTAL_OUSH_BALANCE</div>
+    <div class="oush-val" id="balance">4,270.00</div>
+    <div style="font-size: 0.7rem; color: var(--matrix); margin-top:10px;">≈ £34,160.00 (GEN_VALUE)</div>
+</div>
+
+<div class="transaction-feed" id="feed">
+    <div class="tx-line"><span>[03:45] PROOF_OF_STEP (26k)</span><span class="tx-plus">+1,067 OUSH</span></div>
+    <div class="tx-line"><span>[02:10] AUDIT_BONUS (HEKETE)</span><span class="tx-plus">+500 OUSH</span></div>
+    <div class="tx-line"><span>[01:30] MESH_NODE_UPTIME</span><span class="tx-plus">+50 OUSH</span></div>
+</div>
+
+<button class="mint-btn" onclick="mintPulse()">Sync Biological Data</button>
+
+<script>
+    let bal = 4270.00;
+    function mintPulse() {
+        const amount = (Math.random() * 10).toFixed(2);
+        bal = (parseFloat(bal) + parseFloat(amount)).toFixed(2);
+        document.getElementById('balance').innerText = bal.toLocaleString();
+        
+        const line = document.createElement('div');
+        line.className = 'tx-line';
+        line.innerHTML = `<span>[${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}] BIO_SYNC_SUCCESS</span><span class="tx-plus">+${amount} OUSH</span>`;
+        const feed = document.getElementById('feed');
+        feed.prepend(line);
+    }
+</script>
+
+</body>
+</html>
