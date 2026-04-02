@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#f0c040" />
+  <meta name="description" content="Genesis Mobile: The Sovereign Shield — handheld interface for the CassAI Ecosystem" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Genesis Mobile" />
+
+  <title>Genesis Mobile 🛡️</title>
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ── Offline Banner ── -->
+<div id="offline-bar">📴 OFFLINE — Ledger vaulted locally</div>
+
+<!-- ── Header ── -->
+<header class="app-header">
+  <div class="header-brand">
+    <div class="header-shield">🛡️</div>
+    <div class="header-text">
+      <h1>Genesis Mobile</h1>
+      <p>The Sovereign Shield · CassAI Ecosystem</p>
+    </div>
+  </div>
+  <div class="header-status">
+    <div class="status-pill">
+      <div class="status-dot partial" id="status-dot"></div>
+      <span id="status-label">ONLINE</span>
+    </div>
+    <div style="font-size:10px;color:var(--text-dim);text-align:right;margin-top:3px">
+      <span class="rwl-balance">0</span> RWL
+    </div>
+  </div>
+</header>
+
+<!-- ── Navigation Tabs ── -->
+<nav class="nav-tabs" role="tablist">
+  <button class="nav-tab active" data-tab="dashboard" role="tab" aria-selected="true">
+    <span class="tab-icon">📊</span>Dashboard
+  </button>
+  <button class="nav-tab" data-tab="mesh" role="tab" aria-selected="false">
+    <span class="tab-icon">🕸️</span>Mesh
+  </button>
+  <button class="nav-tab" data-tab="credits" role="tab" aria-selected="false">
+    <span class="tab-icon">💎</span>RWL
+  </button>
+  <button class="nav-tab" data-tab="pantheon" role="tab" aria-selected="false">
+    <span class="tab-icon">⚡</span>Pantheon
+  </button>
+  <button class="nav-tab" data-tab="identity" role="tab" aria-selected="false">
+    <span class="tab-icon">🔑</span>Identity
+  </button>
+</nav>
+
+<!-- ================================================================
+     TAB: DASHBOARD
+     ================================================================ -->
+<div id="tab-dashboard" class="tab-panel active">
+
+  <!-- Sovereign Pulse -->
+  <div class="card glow">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon">🌐</span>Sovereign Pulse</div>
+      <div class="badge badge-gold">LIVE</div>
+    </div>
+    <div class="sovereign-pulse">
+      <div class="pulse-circle">🛡️</div>
+    </div>
+    <div class="stat-grid" style="margin-top:16px">
+      <div class="stat-item">
+        <div class="stat-value" id="dash-peers">0</div>
+        <div class="stat-label">Mesh Peers</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value rwl-balance">0</div>
+        <div class="stat-label">RWL Balance</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Identity Summary -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon">🔑</span>Sovereign ID</div>
+      <button class="btn btn-sm btn-ghost btn-copy-did">Copy DID</button>
+    </div>
+    <div class="did-display">
+      <div class="did-label">Decentralized Identifier (DID)</div>
+      <div class="did-value">No identity — visit Identity tab</div>
+    </div>
+  </div>
+
+  <!-- Active Node -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon">⚡</span>Active Pantheon Node</div>
+    </div>
+    <div id="dash-active-node" style="text-align:center;padding:12px;color:var(--text-dim);font-size:13px">
+      No node active — visit Pantheon tab
+    </div>
+  </div>
+
+  <!-- Recent Activity -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon">📋</span>Recent Activity</div>
+    </div>
+    <div id="recent-activity"></div>
+  </div>
+
+</div>
+
+<!-- ================================================================
+     TAB: MESH
+     ================================================================ -->
+<div id="tab-mesh" class="tab-panel">
+
+  <!-- Mesh Control -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon">🕸️</span>Spider-Web Mesh</div>
+      <div class="badge badge-cyan" id="mesh-status-text">Offline</div>
+    </div>
+    <div class="toggle-wrap">
+      <div>
+        <div class="toggle-label">P2P Mesh Bridge</div>
+        <div class="toggle-sub">WebRTC · No centralized ISP required</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="mesh-toggle" />
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      </label>
+    </div>
+    <div class="divider"></div>
+    <div style="font-size:11px;color:var(--text-dim);line-height:1.7">
+      The Spider-Web Mesh Handshake Protocol establishes peer-to-peer data bridges
+      using WebRTC, bypassing centralized ISPs. Your node relays encrypted packets
+      across the mesh for full sovereign connectivity.
+    </div>
+  </div>
+
+  <!-- Visualization -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon">📡</span>Mesh Visualization</div>
+      <div class="badge badge-purple"><span id="peer-count">0</span> peers</div>
+    </div>
+    <canvas id="mesh-canvas" height="220"></canvas>
+  </div>
+
+  <!-- Peer List -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon">👥</span>Connected Peers</div>
+    </div>
+    <div id="peer-list" class="peer-list">
+      <div class="text-dim fs-12" style="padding:16px;text-align:center">
+        Activate mesh to discover peers
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ================================================================
+     TAB: RWL CREDITS
+     ================================================================ -->
+<div id="tab-credits" class="tab-panel">
+
+  <!-- Balance Hero -->
+  <div class="card glow">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon">💎</span>RWL Balance</div>
+      <div class="badge badge-gold">Real World Learning</div>
+    </div>
+    <div class="stat-hero">
+      <div class="stat-hero-value rwl-balance">0</div>
+      <div class="stat-hero-label">credits earned</div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:10px">
+      <button class="btn btn-primary btn-full" id="btn-mint">⭐ Mint RWL Credit</button>
+      <button class="btn btn-cyan" id="btn-sync">📡 Sync</button>
+    </div>
+  </div>
+
+  <!-- Sync Status -->
+  <div id="sync-banner" class="sync-banner synced">✅ &nbsp;Ledger fully synced</div>
+
+  <!-- Credit Log -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon">📋</span>Credit Ledger</div>
+    </div>
+    <div id="credit-log" class="credit-log">
+      <div class="text-dim fs-12" style="padding:16px;text-align:center">No credits yet</div>
+    </div>
+  </div>
+
+  <!-- How Credits Work -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon">ℹ️</span>How RWL Credits Work</div>
+    </div>
+    <div style="font-size:12px;color:var(--text-secondary);line-height:1.8">
+      <div style="margin-bottom:8px">💡 <strong style="color:var(--gold)">Real World Learning (RWL)</strong> credits are minted when you complete verifiable
+      activities — learning modules, community actions, mesh contributions, and more.</div>
+      <div style="margin-bottom:8px">🔒 Credits are stored in your encrypted local vault and synced to the mesh ledger when online.</div>
+      <div>📴 If offline, credits are vaulted locally and automatically synced on reconnection.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ================================================================
+     TAB: PANTHEON
+     ================================================================ -->
+<div id="tab-pantheon" class="tab-panel">
+
+  <div class="section-title">⚡ The Pantheon of 17 — SDG Nodes</div>
+
+  <!-- Node Grid -->
+  <div id="pantheon-grid" class="pantheon-grid"></div>
+
+  <!-- Active Node Panel Header -->
+  <div id="node-panel-header" class="node-panel-header" style="display:none">
+    <div class="node-panel-icon">⚡</div>
+    <div class="node-panel-info">
+      <h3>Select a node above</h3>
+      <p>Tap any SDG node to activate its interface</p>
+    </div>
+  </div>
+
+  <!-- ── Panel: Iris (SDG 13 — Climate Action) ── -->
+  <div id="panel-iris" class="node-panel">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-icon">🌍</span>Carbon-Scrubber Dashboard</div>
+        <button class="btn btn-sm btn-cyan" id="btn-env-refresh">↻ Refresh</button>
+      </div>
+      <div id="env-metrics" class="env-metrics">
+        <div class="text-dim fs-12" style="padding:12px;text-align:center">Loading environmental data…</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-icon">🌱</span>Carbon Actions</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-ghost btn-full" onclick="showToast('🌱 Tree-planting initiative logged!','success');awardCredit({label:'Tree Planting Log',amount:20,type:'iris',icon:'🌱'})">
+          🌱 Log Tree Planting
+        </button>
+        <button class="btn btn-ghost btn-full" onclick="showToast('♻️ Recycling action verified!','success');awardCredit({label:'Recycling Verified',amount:15,type:'iris',icon:'♻️'})">
+          ♻️ Verify Recycling Action
+        </button>
+        <button class="btn btn-ghost btn-full" onclick="showToast('🚲 Zero-emission transport logged!','success');awardCredit({label:'Zero-Emission Transport',amount:25,type:'iris',icon:'🚲'})">
+          🚲 Log Zero-Emission Transport
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel: Kong (SDG 4 — Quality Education) ── -->
+  <div id="panel-kong" class="node-panel">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-icon">🧠</span>Mental Printer</div>
+        <button class="btn btn-sm btn-purple" id="btn-mental-printer">▶ Launch</button>
+      </div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;line-height:1.7">
+        The Mental Printer is an adaptive learning engine for neurodivergent learners.
+        It translates complex concepts into personalised, accessible formats.
+      </div>
+      <div class="learning-cards">
+        <div class="learning-card" onclick="showToast('📐 STEM module started!','info');awardCredit({label:'STEM Module',amount:50,type:'kong',icon:'📐'})">
+          <div class="learning-card-icon">📐</div>
+          <div class="learning-card-info"><h4>STEM Foundations</h4><p>Mathematics · Science · Logic</p></div>
+          <div class="learning-card-badge">+50 RWL</div>
+        </div>
+        <div class="learning-card" onclick="showToast('🗣️ Literacy module started!','info');awardCredit({label:'Literacy Module',amount:45,type:'kong',icon:'🗣️'})">
+          <div class="learning-card-icon">🗣️</div>
+          <div class="learning-card-info"><h4>Literacy & Communication</h4><p>Reading · Writing · Expression</p></div>
+          <div class="learning-card-badge">+45 RWL</div>
+        </div>
+        <div class="learning-card" onclick="showToast('💻 Coding module started!','info');awardCredit({label:'Coding Module',amount:60,type:'kong',icon:'💻'})">
+          <div class="learning-card-icon">💻</div>
+          <div class="learning-card-info"><h4>Digital Sovereignty</h4><p>Coding · Privacy · Mesh Tech</p></div>
+          <div class="learning-card-badge">+60 RWL</div>
+        </div>
+        <div class="learning-card" onclick="showToast('🎨 Creative module started!','info');awardCredit({label:'Creative Arts Module',amount:40,type:'kong',icon:'🎨'})">
+          <div class="learning-card-icon">🎨</div>
+          <div class="learning-card-info"><h4>Creative Arts</h4><p>Music · Visual Arts · Storytelling</p></div>
+          <div class="learning-card-badge">+40 RWL</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel: CassAi (SDG 1 — No Poverty) ── -->
+  <div id="panel-cassai" class="node-panel">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-icon">💰</span>Sovereign Vault</div>
+        <button class="btn btn-sm btn-primary" id="btn-vault-distribute">Distribute</button>
+      </div>
+      <div class="vault-breakdown">
+        <div class="vault-row">
+          <div class="vault-row-label">Total RWL Balance</div>
+          <div class="vault-row-value" id="vault-rwl-balance">0 RWL</div>
+        </div>
+        <div class="vault-row">
+          <div class="vault-row-label">Community Equity Pool (35%)</div>
+          <div class="vault-row-value" id="vault-equity">0 RWL</div>
+        </div>
+        <div class="vault-row">
+          <div class="vault-row-label">Sovereign Reserves (45%)</div>
+          <div class="vault-row-value" id="vault-reserves">0 RWL</div>
+        </div>
+        <div class="vault-row">
+          <div class="vault-row-label">Staked for Mesh (20%)</div>
+          <div class="vault-row-value" id="vault-staked">0 RWL</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px"><span class="card-title-icon">📊</span>Financial Equity Actions</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-ghost btn-full" onclick="showToast('💳 Micro-grant application submitted!','success');awardCredit({label:'Micro-Grant Applied',amount:30,type:'cassai',icon:'💳'})">
+          💳 Apply for Micro-Grant
+        </button>
+        <button class="btn btn-ghost btn-full" onclick="showToast('🤝 Cooperative stake recorded!','success');awardCredit({label:'Cooperative Stake',amount:25,type:'cassai',icon:'🤝'})">
+          🤝 Record Cooperative Stake
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel: Odin (SDG 2 — Zero Hunger) ── -->
+  <div id="panel-odin" class="node-panel">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-icon">🌾</span>FoodWorX Surplus Routing</div>
+        <button class="btn btn-sm btn-ghost" onclick="refreshFoodData()">↻ Refresh</button>
+      </div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;line-height:1.7">
+        Real-time food-chain logistics connecting surplus to need via the mesh network.
+      </div>
+      <div id="food-routes" class="route-list">
+        <div class="text-dim fs-12" style="padding:12px;text-align:center">Loading routes…</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px"><span class="card-title-icon">📦</span>Surplus Actions</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-ghost btn-full" onclick="showToast('🥦 Surplus logged to FoodWorX!','success');awardCredit({label:'Surplus Food Logged',amount:20,type:'odin',icon:'🥦'})">
+          🥦 Log Food Surplus
+        </button>
+        <button class="btn btn-ghost btn-full" onclick="showToast('🚚 Delivery confirmed!','success');awardCredit({label:'Food Delivery Confirmed',amount:35,type:'odin',icon:'🚚'})">
+          🚚 Confirm Delivery
+        </button>
+        <button class="btn btn-ghost btn-full" onclick="showToast('🌱 Community garden registered!','success');awardCredit({label:'Community Garden Registered',amount:40,type:'odin',icon:'🌱'})">
+          🌱 Register Community Garden
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel: Placeholder (all other SDGs) ── -->
+  <div id="panel-placeholder" class="node-panel">
+    <div class="card" style="text-align:center;padding:32px 16px">
+      <div style="font-size:48px;margin-bottom:12px">⚙️</div>
+      <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:8px">Initializing…</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.7;max-width:280px;margin:0 auto">
+        This Sovereign Node is being calibrated. Interface modules are loading from
+        the mesh. Check back as the Pantheon expands.
+      </div>
+      <div style="margin-top:20px">
+        <button class="btn btn-purple" onclick="showToast('📡 Node ping sent to mesh!','info');awardCredit({label:'Node Ping Sent',amount:5,type:'pantheon',icon:'📡'})">
+          📡 Ping Node
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ================================================================
+     TAB: IDENTITY
+     ================================================================ -->
+<div id="tab-identity" class="tab-panel">
+
+  <!-- Setup (shown when no identity) -->
+  <div id="identity-setup">
+    <div class="card glow">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-icon">🔑</span>Create Sovereign Identity</div>
+      </div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;line-height:1.7">
+        Your Sovereign Identity is a self-custody Decentralized Identifier (DID).
+        It never leaves your device. Your passphrase seeds your cryptographic key pair.
+      </div>
+      <form id="identity-form">
+        <div class="form-group">
+          <label class="form-label" for="passphrase-input">Passphrase (min. 8 chars)</label>
+          <input
+            type="password"
+            id="passphrase-input"
+            class="form-input"
+            placeholder="Enter a strong passphrase…"
+            minlength="8"
+            required
+            autocomplete="new-password"
+          />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="passphrase-confirm">Confirm Passphrase</label>
+          <input
+            type="password"
+            id="passphrase-confirm"
+            class="form-input"
+            placeholder="Repeat passphrase…"
+            minlength="8"
+            autocomplete="new-password"
+          />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full btn-lg">
+          🛡️ Generate Sovereign Identity
+        </button>
+      </form>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:10px">🔒 Privacy Guarantee</div>
+      <div style="font-size:12px;color:var(--text-secondary);line-height:1.8">
+        <div>✅ Keys generated entirely on-device</div>
+        <div>✅ No server ever sees your passphrase</div>
+        <div>✅ DID is self-sovereign — you own it completely</div>
+        <div>✅ Works offline — no registration required</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Display (shown when identity exists) -->
+  <div id="identity-display" style="display:none">
+    <div class="card glow">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-icon">🛡️</span>Sovereign Identity</div>
+        <div class="badge badge-green">ACTIVE</div>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Decentralized Identifier (DID)</div>
+        <div class="did-display" id="identity-did" style="font-size:10px"></div>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Public Key</div>
+        <div class="did-display" id="identity-pubkey" style="font-size:10px;color:var(--purple-light)"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:4px">
+        Created: <span id="identity-date" class="text-gold"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px">🔐 Key Management</div>
+      <div class="btn-row">
+        <button class="btn btn-cyan" id="btn-export-identity">📤 Export Keys</button>
+        <button class="btn btn-ghost btn-copy-did">📋 Copy DID</button>
+        <button class="btn btn-danger" id="btn-reset-identity">🗑️ Reset</button>
+      </div>
+      <div id="key-export-section" style="display:none;margin-top:14px">
+        <div class="form-label">Backup Key Data (store safely!)</div>
+        <div class="key-box" id="key-box"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:10px">🔒 Security Status</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="fs-12">Identity Established</span>
+          <span class="badge badge-green">✓ Yes</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="fs-12">Local Encryption</span>
+          <span class="badge badge-green">✓ Active</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="fs-12">Mesh Authentication</span>
+          <span class="badge badge-cyan">✓ Ready</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="fs-12">RWL Vault Locked</span>
+          <span class="badge badge-gold">🔒 Secured</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Toast Container ── -->
+<div id="toast-container" aria-live="polite"></div>
+
+<script src="app.js"></script>
+
+<!-- PWA Install prompt helper -->
+<script>
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    /* Show subtle hint after 4 seconds if not already installed */
+    setTimeout(() => {
+      if (deferredPrompt && typeof showToast === 'function') {
+        showToast('📱 Add Genesis Mobile to your home screen for the full experience!', 'info');
+      }
+    }, 4000);
+  });
+
+  /* Fix node panel header visibility after grid renders */
+  document.addEventListener('DOMContentLoaded', () => {
+    const hdr = document.getElementById('node-panel-header');
+    if (hdr) hdr.style.display = 'flex';
+  });
+
+  /* Passphrase confirmation validation */
+  document.addEventListener('DOMContentLoaded', () => {
+    const form    = document.getElementById('identity-form');
+    const pp1     = document.getElementById('passphrase-input');
+    const pp2     = document.getElementById('passphrase-confirm');
+    if (form && pp1 && pp2) {
+      form.addEventListener('submit', e => {
+        if (pp1.value !== pp2.value) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+          if (typeof showToast === 'function') showToast('Passphrases do not match!', 'error');
+          pp2.focus();
+        }
+      });
+    }
+  });
+</script>
+</body>
+</html>
