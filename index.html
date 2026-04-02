@@ -40,21 +40,21 @@
 </header>
 
 <!-- ── Navigation Tabs ── -->
-<nav class="nav-tabs" role="tablist">
-  <button class="nav-tab active" data-tab="dashboard" role="tab" aria-selected="true">
-    <span class="tab-icon">📊</span>Dashboard
+<nav class="nav-tabs" role="tablist" aria-label="Main navigation">
+  <button class="nav-tab active" data-tab="dashboard" role="tab" aria-selected="true" aria-controls="tab-dashboard">
+    <span class="tab-icon" aria-hidden="true">📊</span>Dashboard
   </button>
-  <button class="nav-tab" data-tab="mesh" role="tab" aria-selected="false">
-    <span class="tab-icon">🕸️</span>Mesh
+  <button class="nav-tab" data-tab="mesh" role="tab" aria-selected="false" aria-controls="tab-mesh">
+    <span class="tab-icon" aria-hidden="true">🕸️</span>Mesh
   </button>
-  <button class="nav-tab" data-tab="credits" role="tab" aria-selected="false">
-    <span class="tab-icon">💎</span>RWL
+  <button class="nav-tab" data-tab="credits" role="tab" aria-selected="false" aria-controls="tab-credits">
+    <span class="tab-icon" aria-hidden="true">💎</span>RWL
   </button>
-  <button class="nav-tab" data-tab="pantheon" role="tab" aria-selected="false">
-    <span class="tab-icon">⚡</span>Pantheon
+  <button class="nav-tab" data-tab="pantheon" role="tab" aria-selected="false" aria-controls="tab-pantheon">
+    <span class="tab-icon" aria-hidden="true">⚡</span>Pantheon
   </button>
-  <button class="nav-tab" data-tab="identity" role="tab" aria-selected="false">
-    <span class="tab-icon">🔑</span>Identity
+  <button class="nav-tab" data-tab="identity" role="tab" aria-selected="false" aria-controls="tab-identity">
+    <span class="tab-icon" aria-hidden="true">🔑</span>Identity
   </button>
 </nav>
 
@@ -159,9 +159,60 @@
     <div class="card-header">
       <div class="card-title"><span class="card-title-icon">👥</span>Connected Peers</div>
     </div>
-    <div id="peer-list" class="peer-list">
+    <div id="peer-list" class="peer-list" role="list" aria-label="Connected mesh peers">
       <div class="text-dim fs-12" style="padding:16px;text-align:center">
         Activate mesh to discover peers
+      </div>
+    </div>
+  </div>
+
+  <!-- Real WebRTC P2P Signaling -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon">🔗</span>Real P2P Connection</div>
+      <div class="badge badge-purple">WebRTC</div>
+    </div>
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:14px;line-height:1.7">
+      Connect directly to another device — no server needed.
+      Share your offer code with a peer; paste their response to open an encrypted data channel.
+    </div>
+
+    <!-- Step 1: Create offer -->
+    <button class="btn btn-cyan btn-full" id="btn-create-offer" style="margin-bottom:12px">
+      📡 Create Connection Offer
+    </button>
+
+    <!-- Step 2: Your offer code (Side A) -->
+    <div id="webrtc-offer-section" style="display:none;margin-bottom:12px">
+      <div class="form-label">Your Offer Code — share with your peer:</div>
+      <div style="display:flex;gap:8px">
+        <textarea id="webrtc-offer-box" class="form-input" rows="3" readonly
+          aria-label="WebRTC offer SDP code"
+          style="font-size:9px;font-family:monospace;resize:none"></textarea>
+        <button class="btn btn-ghost btn-sm" id="btn-copy-offer" aria-label="Copy offer code" style="white-space:nowrap">📋 Copy</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Paste peer SDP (offer or answer) -->
+    <div style="margin-bottom:12px">
+      <div class="form-label">Paste Peer's Code:</div>
+      <div style="display:flex;gap:8px">
+        <textarea id="webrtc-paste-box" class="form-input" rows="3"
+          placeholder="Paste offer or answer code here…"
+          aria-label="Paste WebRTC peer code"
+          style="font-size:9px;font-family:monospace;resize:none"></textarea>
+        <button class="btn btn-primary btn-sm" id="btn-accept-sdp" aria-label="Connect with peer code" style="white-space:nowrap">🔗 Connect</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Your answer code (Side B) -->
+    <div id="webrtc-answer-section" style="display:none">
+      <div class="form-label">Your Answer Code — send back to the initiator:</div>
+      <div style="display:flex;gap:8px">
+        <textarea id="webrtc-answer-box" class="form-input" rows="3" readonly
+          aria-label="WebRTC answer SDP code"
+          style="font-size:9px;font-family:monospace;resize:none"></textarea>
+        <button class="btn btn-ghost btn-sm" id="btn-copy-answer" aria-label="Copy answer code" style="white-space:nowrap">📋 Copy</button>
       </div>
     </div>
   </div>
@@ -370,6 +421,156 @@
     </div>
   </div>
 
+  <!-- ── Panel: Aesir (SDG 3 — Good Health) ── -->
+  <div id="panel-aesir" class="node-panel">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-icon">⚕️</span>Community Wellness</div>
+        <button class="btn btn-sm btn-ghost" onclick="refreshAesirData()">↻ Refresh</button>
+      </div>
+      <div id="aesir-metrics" class="env-metrics">
+        <div class="text-dim fs-12" style="padding:12px;text-align:center">Loading health data…</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-icon">🧘</span>Daily Wellness Check-In</div>
+      </div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">How are you feeling today?</div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px" role="group" aria-label="Wellness score 1-5">
+        <button class="btn btn-ghost" aria-label="Feeling low (1/5)" onclick="logWellness(1,'😔')">😔</button>
+        <button class="btn btn-ghost" aria-label="Feeling below average (2/5)" onclick="logWellness(2,'😕')">😕</button>
+        <button class="btn btn-ghost" aria-label="Feeling neutral (3/5)" onclick="logWellness(3,'😐')">😐</button>
+        <button class="btn btn-ghost" aria-label="Feeling good (4/5)" onclick="logWellness(4,'🙂')">🙂</button>
+        <button class="btn btn-ghost" aria-label="Feeling great (5/5)" onclick="logWellness(5,'😊')">😊</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-ghost btn-full" onclick="showToast('🚶 Activity logged!','success');awardCredit({label:'Physical Activity Log',amount:20,type:'aesir',icon:'🚶'})">
+          🚶 Log Physical Activity
+        </button>
+        <button class="btn btn-ghost btn-full" onclick="showToast('🥗 Nutrition log saved!','success');awardCredit({label:'Nutrition Log',amount:15,type:'aesir',icon:'🥗'})">
+          🥗 Log Nutrition
+        </button>
+        <button class="btn btn-ghost btn-full" onclick="showToast('💤 Sleep log saved!','success');awardCredit({label:'Sleep Quality Log',amount:10,type:'aesir',icon:'💤'})">
+          💤 Log Sleep Quality
+        </button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:10px">🆘 Health Resources</div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--text-secondary);line-height:1.9">
+        <div>📞 <strong style="color:var(--cyan)">NHS 111</strong> — non-emergency medical advice</div>
+        <div>🆘 <strong style="color:var(--red)">999</strong> — emergency services</div>
+        <div>💬 <strong style="color:var(--purple-light)">Samaritans</strong> — 116 123 (free, 24/7)</div>
+        <div>🏥 <strong style="color:var(--gold)">GP Access</strong> — register at local NHS surgery</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel: Freya (SDG 5 — Gender Equality) ── -->
+  <div id="panel-freya" class="node-panel">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-icon">⚖️</span>Equality Pulse</div>
+        <button class="btn btn-sm btn-ghost" onclick="refreshFreyaData()">↻ Refresh</button>
+      </div>
+      <div id="freya-metrics" class="env-metrics">
+        <div class="text-dim fs-12" style="padding:12px;text-align:center">Loading equality data…</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-icon">🛡️</span>Community Safety</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-ghost btn-full" onclick="showToast('📍 Safety concern logged anonymously.','success');awardCredit({label:'Safety Report Filed',amount:30,type:'freya',icon:'🛡️'})">
+          📍 Log Safety Concern (Anonymous)
+        </button>
+        <button class="btn btn-ghost btn-full" onclick="showToast('🤝 Ally action recorded!','success');awardCredit({label:'Ally Action',amount:25,type:'freya',icon:'🤝'})">
+          🤝 Record Ally Action
+        </button>
+        <button class="btn btn-ghost btn-full" onclick="showToast('📚 Resource shared with mesh!','success');awardCredit({label:'Resource Shared',amount:20,type:'freya',icon:'📚'})">
+          📚 Share Support Resource
+        </button>
+        <button class="btn btn-ghost btn-full" onclick="showToast('📊 Equality audit submitted!','success');awardCredit({label:'Equality Audit Submitted',amount:40,type:'freya',icon:'📊'})">
+          📊 Submit Workplace Equality Audit
+        </button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:10px">📞 Support Lines</div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--text-secondary);line-height:1.9">
+        <div>📞 <strong style="color:var(--cyan)">National DV Helpline</strong> — 0808 2000 247 (free, 24/7)</div>
+        <div>💬 <strong style="color:var(--purple-light)">Refuge</strong> — 0808 2000 247</div>
+        <div>🌈 <strong style="color:var(--gold)">Stonewall</strong> — info@stonewall.org.uk</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel: Helios (SDG 7 — Affordable Energy) ── -->
+  <div id="panel-helios" class="node-panel">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-icon">☀️</span>Energy Grid</div>
+        <button class="btn btn-sm btn-ghost" onclick="refreshHeliosData()">↻ Refresh</button>
+      </div>
+      <div id="helios-metrics" class="env-metrics">
+        <div class="text-dim fs-12" style="padding:12px;text-align:center">Loading energy data…</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-icon">🔋</span>Energy Actions</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-ghost btn-full" onclick="showToast('☀️ Solar usage logged!','success');awardCredit({label:'Solar Energy Logged',amount:25,type:'helios',icon:'☀️'})">
+          ☀️ Log Solar Energy Used
+        </button>
+        <button class="btn btn-ghost btn-full" onclick="showToast('💡 Energy saving recorded!','success');awardCredit({label:'Energy Saving Action',amount:20,type:'helios',icon:'💡'})">
+          💡 Record Energy Saving
+        </button>
+        <button class="btn btn-ghost btn-full" onclick="showToast('🔌 Community grid contribution logged!','success');awardCredit({label:'Grid Contribution',amount:35,type:'helios',icon:'🔌'})">
+          🔌 Log Community Grid Contribution
+        </button>
+        <button class="btn btn-ghost btn-full" onclick="showToast('🌬️ Renewable usage logged!','success');awardCredit({label:'Wind Energy Logged',amount:25,type:'helios',icon:'🌬️'})">
+          🌬️ Log Wind / Renewable Usage
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel: Athena (SDG 11 — Sustainable Cities) ── -->
+  <div id="panel-athena" class="node-panel">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-icon">🦉</span>Urban Pulse</div>
+        <button class="btn btn-sm btn-ghost" onclick="refreshAthenaData()">↻ Refresh</button>
+      </div>
+      <div id="athena-metrics" class="env-metrics">
+        <div class="text-dim fs-12" style="padding:12px;text-align:center">Loading urban data…</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-icon">🏙️</span>Community Reports</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-ghost btn-full" onclick="showToast('🔧 Infrastructure issue reported!','success');awardCredit({label:'Infrastructure Report',amount:15,type:'athena',icon:'🔧'})">
+          🔧 Report Infrastructure Issue
+        </button>
+        <button class="btn btn-ghost btn-full" onclick="showToast('🚲 Active transport logged!','success');awardCredit({label:'Active Transport Log',amount:20,type:'athena',icon:'🚲'})">
+          🚲 Log Active Transport
+        </button>
+        <button class="btn btn-ghost btn-full" onclick="showToast('🌳 Green space added!','success');awardCredit({label:'Green Space Mapped',amount:25,type:'athena',icon:'🌳'})">
+          🌳 Map Community Green Space
+        </button>
+        <button class="btn btn-ghost btn-full" onclick="showToast('🤝 Shared space registered!','success');awardCredit({label:'Shared Space Registered',amount:30,type:'athena',icon:'🤝'})">
+          🤝 Register Shared Community Space
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Panel: Placeholder (all other SDGs) ── -->
   <div id="panel-placeholder" class="node-panel">
     <div class="card" style="text-align:center;padding:32px 16px">
@@ -402,9 +603,9 @@
       </div>
       <div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;line-height:1.7">
         Your Sovereign Identity is a self-custody Decentralized Identifier (DID).
-        It never leaves your device. Your passphrase seeds your cryptographic key pair.
+        It never leaves your device. Keys are generated using real cryptography (ECDSA P-256).
       </div>
-      <form id="identity-form">
+      <form id="identity-form" aria-label="Create Sovereign Identity">
         <div class="form-group">
           <label class="form-label" for="passphrase-input">Passphrase (min. 8 chars)</label>
           <input
@@ -415,7 +616,10 @@
             minlength="8"
             required
             autocomplete="new-password"
+            aria-required="true"
+            aria-describedby="passphrase-hint"
           />
+          <div id="passphrase-hint" class="fs-11 text-dim" style="margin-top:4px">A real ECDSA P-256 key pair is generated on your device — your passphrase is only used for confirmation.</div>
         </div>
         <div class="form-group">
           <label class="form-label" for="passphrase-confirm">Confirm Passphrase</label>
@@ -426,9 +630,10 @@
             placeholder="Repeat passphrase…"
             minlength="8"
             autocomplete="new-password"
+            aria-required="true"
           />
         </div>
-        <button type="submit" class="btn btn-primary btn-full btn-lg">
+        <button type="submit" class="btn btn-primary btn-full btn-lg" aria-label="Generate cryptographic Sovereign Identity">
           🛡️ Generate Sovereign Identity
         </button>
       </form>
@@ -436,9 +641,10 @@
     <div class="card">
       <div class="card-title" style="margin-bottom:10px">🔒 Privacy Guarantee</div>
       <div style="font-size:12px;color:var(--text-secondary);line-height:1.8">
-        <div>✅ Keys generated entirely on-device</div>
-        <div>✅ No server ever sees your passphrase</div>
+        <div>✅ ECDSA P-256 keys generated on-device via Web Crypto API</div>
+        <div>✅ No server ever sees your passphrase or private key</div>
         <div>✅ DID is self-sovereign — you own it completely</div>
+        <div>✅ Credits are cryptographically signed by your key</div>
         <div>✅ Works offline — no registration required</div>
       </div>
     </div>
@@ -449,7 +655,10 @@
     <div class="card glow">
       <div class="card-header">
         <div class="card-title"><span class="card-title-icon">🛡️</span>Sovereign Identity</div>
-        <div class="badge badge-green">ACTIVE</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="badge badge-cyan" id="identity-algo" style="font-size:9px"></span>
+          <div class="badge badge-green">ACTIVE</div>
+        </div>
       </div>
       <div class="form-group">
         <div class="form-label">Decentralized Identifier (DID)</div>

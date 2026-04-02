@@ -8,24 +8,25 @@
 
 /* ── Constants ── */
 const DB_NAME     = 'genesis-mobile';
-const DB_VERSION  = 1;
+const DB_VERSION  = 2;
 const STORE_CREDITS = 'credits';
 const STORE_LEDGER  = 'ledger';
 const STORE_PEERS   = 'peers';
+const STORE_LERR    = 'lerr-cache';
 
 /* ── SDG Pantheon Definition ── */
 const PANTHEON = [
   { id: 'cassai',    name: 'CassAi',     emoji: '💰', sdg: 1,  title: 'No Poverty',              color: '#f0c040', rgb: '240,192,64',  panel: 'panel-cassai' },
   { id: 'odin',      name: 'Odin',        emoji: '🌾', sdg: 2,  title: 'Zero Hunger',             color: '#f97316', rgb: '249,115,22',  panel: 'panel-odin' },
-  { id: 'aesir',     name: 'Aesir',       emoji: '⚕️', sdg: 3,  title: 'Good Health',             color: '#10b981', rgb: '16,185,129',  panel: 'panel-placeholder' },
+  { id: 'aesir',     name: 'Aesir',       emoji: '⚕️', sdg: 3,  title: 'Good Health',             color: '#10b981', rgb: '16,185,129',  panel: 'panel-aesir' },
   { id: 'kong',      name: 'Kong',        emoji: '🧠', sdg: 4,  title: 'Quality Education',       color: '#7c3aed', rgb: '124,58,237',  panel: 'panel-kong' },
-  { id: 'freya',     name: 'Freya',       emoji: '⚖️', sdg: 5,  title: 'Gender Equality',         color: '#ec4899', rgb: '236,72,153',  panel: 'panel-placeholder' },
+  { id: 'freya',     name: 'Freya',       emoji: '⚖️', sdg: 5,  title: 'Gender Equality',         color: '#ec4899', rgb: '236,72,153',  panel: 'panel-freya' },
   { id: 'poseidon',  name: 'Poseidon',    emoji: '💧', sdg: 6,  title: 'Clean Water',             color: '#0ea5e9', rgb: '14,165,233',  panel: 'panel-placeholder' },
-  { id: 'helios',    name: 'Helios',      emoji: '☀️', sdg: 7,  title: 'Affordable Energy',       color: '#eab308', rgb: '234,179,8',   panel: 'panel-placeholder' },
+  { id: 'helios',    name: 'Helios',      emoji: '☀️', sdg: 7,  title: 'Affordable Energy',       color: '#eab308', rgb: '234,179,8',   panel: 'panel-helios' },
   { id: 'hephaestus',name: 'Hephaestus', emoji: '⚙️', sdg: 8,  title: 'Decent Work',             color: '#f97316', rgb: '249,115,22',  panel: 'panel-placeholder' },
   { id: 'prometheus',name: 'Prometheus', emoji: '🔥', sdg: 9,  title: 'Industry & Innovation',   color: '#ef4444', rgb: '239,68,68',   panel: 'panel-placeholder' },
   { id: 'themis',    name: 'Themis',      emoji: '🏛️', sdg: 10, title: 'Reduced Inequalities',    color: '#a855f7', rgb: '168,85,247',  panel: 'panel-placeholder' },
-  { id: 'athena',    name: 'Athena',      emoji: '🦉', sdg: 11, title: 'Sustainable Cities',      color: '#6366f1', rgb: '99,102,241',  panel: 'panel-placeholder' },
+  { id: 'athena',    name: 'Athena',      emoji: '🦉', sdg: 11, title: 'Sustainable Cities',      color: '#6366f1', rgb: '99,102,241',  panel: 'panel-athena' },
   { id: 'gaia',      name: 'Gaia',        emoji: '♻️', sdg: 12, title: 'Responsible Consumption', color: '#22c55e', rgb: '34,197,94',   panel: 'panel-placeholder' },
   { id: 'iris',      name: 'Iris',        emoji: '🌍', sdg: 13, title: 'Climate Action',          color: '#00e5ff', rgb: '0,229,255',   panel: 'panel-iris' },
   { id: 'nereid',    name: 'Nereid',      emoji: '🐋', sdg: 14, title: 'Life Below Water',        color: '#0369a1', rgb: '3,105,161',   panel: 'panel-placeholder' },
@@ -37,7 +38,7 @@ const PANTHEON = [
 /* ── App State ── */
 const state = {
   db:            null,
-  identity:      null,    // { did, publicKey, createdAt }
+  identity:      null,    // { did, publicKey, publicKeyJwk, privateKeyJwk, algorithm, createdAt }
   meshActive:    false,
   peers:         [],
   rwlBalance:    0,
@@ -47,6 +48,8 @@ const state = {
   meshAnimFrame: null,
   meshNodes:     [],
   meshEdges:     [],
+  sessionStart:  Date.now(),
+  lerrStats:     { totalQueries: 0, localHits: 0, cacheHits: 0 },
 };
 
 /* ── IndexedDB Setup ── */
@@ -63,6 +66,9 @@ function openDB() {
       }
       if (!db.objectStoreNames.contains(STORE_PEERS)) {
         db.createObjectStore(STORE_PEERS, { keyPath: 'peerId' });
+      }
+      if (!db.objectStoreNames.contains(STORE_LERR)) {
+        db.createObjectStore(STORE_LERR, { keyPath: 'key' });
       }
     };
     req.onsuccess = e => resolve(e.target.result);
@@ -88,32 +94,54 @@ function dbGetAll(store) {
   });
 }
 
-/* ── Sovereign Identity ── */
-function generateDID(passphrase) {
-  const seed = passphrase + Date.now().toString(36);
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = ((hash << 5) - hash + seed.charCodeAt(i)) >>> 0;
-  }
-  const base58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-  let n = hash;
-  let result = '';
-  for (let i = 0; i < 22; i++) {
-    result = base58[n % 58] + result;
-    n = Math.floor(n / 58);
-  }
-  return `did:genesis:${result}${Date.now().toString(36)}`;
+/* ── Crypto Utilities ── */
+function bufToBase64(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)));
 }
 
-function generateKeyPair(passphrase) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  let pub = '', priv = '';
-  const seed = passphrase.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  let s = seed;
-  for (let i = 0; i < 44; i++) { s = (s * 1103515245 + 12345) & 0x7fffffff; pub += chars[s % 64]; }
-  s = seed ^ 0xdeadbeef;
-  for (let i = 0; i < 88; i++) { s = (s * 1664525 + 1013904223) & 0x7fffffff; priv += chars[s % 64]; }
-  return { publicKey: pub, privateKey: priv };
+function base64ToBuf(b64) {
+  return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+}
+
+/* ── Sovereign Identity (real SubtleCrypto ECDSA P-256) ── */
+async function generateCryptoIdentity() {
+  const keyPair = await crypto.subtle.generateKey(
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    true,
+    ['sign', 'verify']
+  );
+  const pubJwk  = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
+  const privJwk = await crypto.subtle.exportKey('jwk', keyPair.privateKey);
+
+  // DID derived from the public x-coordinate (first 22 chars of base64url)
+  const did = `did:genesis:${pubJwk.x.slice(0, 22)}`;
+
+  return {
+    did,
+    publicKey:     pubJwk.x,        // base64url x-coordinate for display
+    publicKeyJwk:  pubJwk,
+    privateKeyJwk: privJwk,
+    algorithm:     'ECDSA-P256',
+    createdAt:     new Date().toISOString(),
+  };
+}
+
+async function signCredit(credit) {
+  if (!state.identity || !state.identity.privateKeyJwk) return null;
+  try {
+    const privKey = await crypto.subtle.importKey(
+      'jwk', state.identity.privateKeyJwk,
+      { name: 'ECDSA', namedCurve: 'P-256' },
+      false, ['sign']
+    );
+    const payload = new TextEncoder().encode(
+      JSON.stringify({ label: credit.label, amount: credit.amount, timestamp: credit.timestamp })
+    );
+    const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privKey, payload);
+    return bufToBase64(sig);
+  } catch {
+    return null;
+  }
 }
 
 function loadIdentity() {
@@ -126,19 +154,12 @@ function saveIdentity(identity) {
   localStorage.setItem('genesis-identity', JSON.stringify(identity));
 }
 
-function initIdentity(passphrase) {
+async function initIdentity(passphrase) {
   if (!passphrase || passphrase.trim().length < 8) {
     showToast('Passphrase must be at least 8 characters.', 'error');
     return;
   }
-  const keys = generateKeyPair(passphrase.trim());
-  const identity = {
-    did:        generateDID(passphrase),
-    publicKey:  keys.publicKey,
-    privateKey: keys.privateKey,
-    passphrase: btoa(passphrase.trim()),  // base64-encoded passphrase (demo only)
-    createdAt:  new Date().toISOString(),
-  };
+  const identity = await generateCryptoIdentity();
   saveIdentity(identity);
   state.identity = identity;
   renderIdentity();
@@ -149,15 +170,17 @@ function initIdentity(passphrase) {
 
 /* ── RWL Credits ── */
 async function awardCredit({ label, amount, type, icon }) {
+  const timestamp = Date.now();
   const entry = {
     label,
     amount,
     type,
     icon:      icon || '⭐',
-    timestamp: Date.now(),
+    timestamp,
     synced:    state.isOnline,
     pending:   !state.isOnline,
   };
+  entry.signature = await signCredit(entry);
   if (!state.isOnline) {
     state.pendingCredits.push(entry);
     localStorage.setItem('genesis-pending', JSON.stringify(state.pendingCredits));
@@ -450,38 +473,297 @@ function activateNode(nodeId) {
   }
 
   /* Refresh environmental data if Iris */
-  if (nodeId === 'iris') refreshEnvData();
+  if (nodeId === 'iris')   refreshEnvData();
   /* Refresh vault if CassAi */
   if (nodeId === 'cassai') refreshVaultData();
   /* Refresh food if Odin */
-  if (nodeId === 'odin') refreshFoodData();
+  if (nodeId === 'odin')   refreshFoodData();
+  /* Refresh new full panels */
+  if (nodeId === 'aesir')  refreshAesirData();
+  if (nodeId === 'freya')  refreshFreyaData();
+  if (nodeId === 'helios') refreshHeliosData();
+  if (nodeId === 'athena') refreshAthenaData();
+
+  /* LERR: log node access as a local-resolved query */
+  lerrQuery(`${nodeId} node`);
 
   showToast(`${node.emoji} ${node.name} activated — SDG ${node.sdg}`, 'info');
   awardCredit({ label: `${node.name} Node Accessed`, amount: 10, type: 'pantheon', icon: node.emoji });
 }
 
-/* ── Iris Environmental Data ── */
-function refreshEnvData() {
-  const metrics = [
-    { label: 'Air Quality Index', value: Math.floor(Math.random() * 40 + 20), max: 100, unit: 'AQI', warn: 50 },
-    { label: 'CO₂ Sequestered Today', value: Math.floor(Math.random() * 60 + 30), max: 100, unit: 'kg', warn: 999 },
-    { label: 'Carbon Footprint', value: Math.floor(Math.random() * 70 + 15), max: 100, unit: 'kg CO₂', warn: 50 },
-    { label: 'Renewable Energy Use', value: Math.floor(Math.random() * 40 + 55), max: 100, unit: '%', warn: 999 },
-    { label: 'Tree Cover Index', value: Math.floor(Math.random() * 30 + 50), max: 100, unit: '%', warn: 999 },
-  ];
+/* ── Iris: Carbon + Battery Dashboard ── */
+async function refreshEnvData() {
   const el = document.getElementById('env-metrics');
   if (!el) return;
+  el.innerHTML = '<div class="text-dim fs-12" style="padding:12px;text-align:center">Loading…</div>';
+
+  const metrics = [];
+  const sessionMins = Math.max(1, Math.round((Date.now() - state.sessionStart) / 60000));
+
+  /* Battery API */
+  if ('getBattery' in navigator) {
+    try {
+      const bat = await navigator.getBattery();
+      metrics.push({
+        label: `Battery Level ${bat.charging ? '⚡ Charging' : '🔋'}`,
+        value: Math.round(bat.level * 100),
+        max: 100, unit: '%',
+      });
+    } catch { /* API unavailable */ }
+  }
+
+  /* Session carbon estimates */
+  const dataMB     = parseFloat((sessionMins * 0.06 + state.peers.length * 0.02).toFixed(2));
+  const p2pCO2     = (dataMB * 0.002).toFixed(4);
+  const cloudCO2   = (dataMB * 0.006).toFixed(4);
+  const savedCO2   = (dataMB * 0.004).toFixed(4);
+
+  metrics.push(
+    { label: 'Session Active',        value: sessionMins,                                    max: 120, unit: 'min' },
+    { label: 'Est. Data Used',        value: Math.min(100, Math.round(dataMB * 10)),          max: 100, unit: `${dataMB} MB`,    rawUnit: true },
+    { label: 'Mesh CO₂ Cost',         value: Math.min(100, Math.round(parseFloat(p2pCO2)  * 10000)), max: 100, unit: `${p2pCO2} kg CO₂`,   rawUnit: true },
+    { label: 'Cloud Equivalent CO₂',  value: Math.min(100, Math.round(parseFloat(cloudCO2) * 10000)), max: 100, unit: `${cloudCO2} kg CO₂`, rawUnit: true, cls: 'warn' },
+    { label: '🌱 Carbon Saved',        value: Math.min(100, Math.round(parseFloat(savedCO2) * 10000)), max: 100, unit: `${savedCO2} kg CO₂`, rawUnit: true }
+  );
+
+  /* LERR efficiency */
+  const { totalQueries, localHits, cacheHits } = state.lerrStats;
+  if (totalQueries > 0) {
+    const eff = Math.round(((localHits + cacheHits) / totalQueries) * 100);
+    metrics.push({ label: 'LERR Cache Efficiency', value: eff, max: 100, unit: '%' });
+  }
+
   el.innerHTML = metrics.map(m => {
-    const pct = Math.round((m.value / m.max) * 100);
-    const cls = m.value > m.warn ? 'warn' : m.value > m.warn * 1.3 ? 'danger' : '';
+    const pct = Math.min(100, Math.round((m.value / m.max) * 100));
     return `
       <div class="metric-row">
         <div class="metric-label">${m.label}</div>
-        <div class="metric-bar-wrap"><div class="metric-bar ${cls}" style="width:${pct}%"></div></div>
-        <div class="metric-value">${m.value}${m.unit !== 'AQI' && m.unit !== 'kg CO₂' ? '' : ''} <span style="font-size:9px;opacity:.6">${m.unit}</span></div>
+        <div class="metric-bar-wrap"><div class="metric-bar ${m.cls || ''}" style="width:${pct}%"></div></div>
+        <div class="metric-value">${m.rawUnit ? m.unit : m.value + ' <span style="font-size:9px;opacity:.6">' + m.unit + '</span>'}</div>
       </div>
     `;
   }).join('');
+}
+
+/* ── Aesir (SDG 3) — Health Data ── */
+function refreshAesirData() {
+  const metrics = [
+    { label: 'Community Wellness Score', value: 72, max: 100, unit: '/100' },
+    { label: 'Mental Health Reports',    value: 45, max: 100, unit: 'filed' },
+    { label: 'Physical Activity Index',  value: 63, max: 100, unit: '%' },
+    { label: 'Healthcare Access',        value: 81, max: 100, unit: '%' },
+  ];
+  const el = document.getElementById('aesir-metrics');
+  if (!el) return;
+  el.innerHTML = metrics.map(m => {
+    const pct = Math.round((m.value / m.max) * 100);
+    return `<div class="metric-row">
+      <div class="metric-label">${m.label}</div>
+      <div class="metric-bar-wrap"><div class="metric-bar" style="width:${pct}%"></div></div>
+      <div class="metric-value">${m.value}<span style="font-size:9px;opacity:.6"> ${m.unit}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function logWellness(score, emoji) {
+  showToast(`${emoji} Wellness score ${score}/5 logged!`, 'success');
+  awardCredit({ label: `Wellness Check-In (${score}/5)`, amount: score * 5, type: 'aesir', icon: emoji });
+}
+
+/* ── Freya (SDG 5) — Equality Data ── */
+function refreshFreyaData() {
+  const metrics = [
+    { label: 'Safety Reports This Week', value: 12, max: 50,  unit: 'reports' },
+    { label: 'Community Allies Active',  value: 34, max: 100, unit: 'allies' },
+    { label: 'Resource Shares',          value: 78, max: 100, unit: '%' },
+    { label: 'Equality Audits Filed',    value: 5,  max: 20,  unit: 'audits' },
+  ];
+  const el = document.getElementById('freya-metrics');
+  if (!el) return;
+  el.innerHTML = metrics.map(m => {
+    const pct = Math.round((m.value / m.max) * 100);
+    return `<div class="metric-row">
+      <div class="metric-label">${m.label}</div>
+      <div class="metric-bar-wrap"><div class="metric-bar" style="width:${pct}%"></div></div>
+      <div class="metric-value">${m.value}<span style="font-size:9px;opacity:.6"> ${m.unit}</span></div>
+    </div>`;
+  }).join('');
+}
+
+/* ── Helios (SDG 7) — Energy Data ── */
+function refreshHeliosData() {
+  const metrics = [
+    { label: 'Renewables on Grid',   value: Math.floor(Math.random() * 20) + 55, max: 100, unit: '%' },
+    { label: 'Solar Contribution',   value: Math.floor(Math.random() * 15) + 30, max: 100, unit: '%' },
+    { label: 'Energy Savings Today', value: Math.floor(Math.random() * 30) + 20, max: 100, unit: 'kWh' },
+    { label: 'Carbon Offset',        value: Math.floor(Math.random() * 50) + 40, max: 100, unit: 'kg CO₂' },
+  ];
+  const el = document.getElementById('helios-metrics');
+  if (!el) return;
+  el.innerHTML = metrics.map(m => {
+    const pct = Math.round((m.value / m.max) * 100);
+    return `<div class="metric-row">
+      <div class="metric-label">${m.label}</div>
+      <div class="metric-bar-wrap"><div class="metric-bar" style="width:${pct}%"></div></div>
+      <div class="metric-value">${m.value}<span style="font-size:9px;opacity:.6"> ${m.unit}</span></div>
+    </div>`;
+  }).join('');
+}
+
+/* ── Athena (SDG 11) — Urban Data ── */
+function refreshAthenaData() {
+  const metrics = [
+    { label: 'Infrastructure Reports', value: 23, max: 50,  unit: 'open' },
+    { label: 'Active Transport Use',   value: Math.floor(Math.random() * 20) + 60, max: 100, unit: '%' },
+    { label: 'Green Space Coverage',   value: Math.floor(Math.random() * 10) + 30, max: 100, unit: '%' },
+    { label: 'Shared Spaces Active',   value: 8,  max: 20,  unit: 'spaces' },
+  ];
+  const el = document.getElementById('athena-metrics');
+  if (!el) return;
+  el.innerHTML = metrics.map(m => {
+    const pct = Math.round((m.value / m.max) * 100);
+    return `<div class="metric-row">
+      <div class="metric-label">${m.label}</div>
+      <div class="metric-bar-wrap"><div class="metric-bar" style="width:${pct}%"></div></div>
+      <div class="metric-value">${m.value}<span style="font-size:9px;opacity:.6"> ${m.unit}</span></div>
+    </div>`;
+  }).join('');
+}
+
+/* ── LERR: Local Energy-Efficient Request Resolution (Algoalgo) ── */
+const LERR_PATTERNS = [
+  { re: /balance|rwl|credit/i,     key: 'balance',   fn: () => ({ balance: state.rwlBalance, pending: state.pendingCredits.length }) },
+  { re: /peer|mesh|node count/i,   key: 'peers',     fn: () => ({ peers: state.peers.length, active: state.meshActive }) },
+  { re: /identity|did|who am i/i,  key: 'identity',  fn: () => ({ did: state.identity ? state.identity.did : null }) },
+  { re: /sdg|pantheon|god|node/i,  key: 'pantheon',  fn: () => ({ count: PANTHEON.length, active: state.activeNode }) },
+  { re: /session|time|duration/i,  key: 'session',   fn: () => ({ mins: Math.round((Date.now() - state.sessionStart) / 60000) }) },
+];
+
+async function lerrQuery(rawQuery) {
+  state.lerrStats.totalQueries++;
+
+  // Phase 1: In-memory pattern match — 0% network cost
+  for (const p of LERR_PATTERNS) {
+    if (p.re.test(rawQuery)) {
+      state.lerrStats.localHits++;
+      return { result: p.fn(), source: 'local-memory', energySaved: 100 };
+    }
+  }
+
+  // Phase 2: IndexedDB cache — 80% energy saved vs cloud
+  try {
+    const cacheKey = rawQuery.toLowerCase().trim().slice(0, 50);
+    const tx  = state.db.transaction(STORE_LERR, 'readonly');
+    const req = tx.objectStore(STORE_LERR).get(cacheKey);
+    const cached = await new Promise(r => { req.onsuccess = () => r(req.result); req.onerror = () => r(null); });
+    if (cached && (Date.now() - cached.ts) < 3_600_000) {
+      state.lerrStats.cacheHits++;
+      return { result: cached.value, source: 'idb-cache', energySaved: 80 };
+    }
+  } catch { /* cache unavailable — proceed */ }
+
+  // Phase 3: Cache miss — would go to network; return null (offline-first)
+  return { result: null, source: 'cache-miss', energySaved: 0 };
+}
+
+async function lerrCacheSet(key, value) {
+  if (!state.db) return;
+  try {
+    const tx = state.db.transaction(STORE_LERR, 'readwrite');
+    tx.objectStore(STORE_LERR).put({ key: key.slice(0, 50), value, ts: Date.now() });
+  } catch { /* ignore */ }
+}
+
+/* ── Real WebRTC P2P (manual SDP exchange, no signalling server) ── */
+const RTC_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+const rtcPeers   = {};     // peerId → { conn, dc, state }
+let   rtcCurrentOffer = null;
+
+function _rtcGatherSDP(pc) {
+  return new Promise(resolve => {
+    const check = () => {
+      if (pc.iceGatheringState === 'complete') {
+        resolve(btoa(JSON.stringify({ type: pc.localDescription.type, sdp: pc.localDescription.sdp })));
+      }
+    };
+    pc.onicegatheringstatechange = check;
+    pc.onicecandidate = e => { if (!e.candidate) check(); };
+    setTimeout(() => {
+      if (pc.localDescription) {
+        resolve(btoa(JSON.stringify({ type: pc.localDescription.type, sdp: pc.localDescription.sdp })));
+      }
+    }, 6000);
+  });
+}
+
+function _setupRTCDataChannel(dc, peerId) {
+  dc.onopen = () => {
+    const idx  = Math.floor(Math.random() * PEER_NAMES.length);
+    const name = PEER_NAMES[idx];
+    rtcPeers[peerId].name = name;
+    const peer = { peerId, name, emoji: PEER_EMOJIS[idx], signal: 4, latency: 0, connectedAt: Date.now(), realRtc: true };
+    state.peers.push(peer);
+    dbPut(STORE_PEERS, peer);
+    buildMeshNodes();
+    updateMeshUI();
+    showToast(`🔗 ${name} connected via WebRTC!`, 'success');
+    awardCredit({ label: 'Real P2P Connection Established', amount: 50, type: 'mesh', icon: '🔗' });
+    dc.send(JSON.stringify({ type: 'ping', t: Date.now() }));
+  };
+  dc.onclose = () => {
+    state.peers = state.peers.filter(p => p.peerId !== peerId);
+    delete rtcPeers[peerId];
+    buildMeshNodes();
+    updateMeshUI();
+    showToast('Peer disconnected from mesh.', 'warning');
+  };
+  dc.onerror = err => console.warn('[Genesis] DataChannel error', err);
+  dc.onmessage = e => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'ping') {
+        dc.send(JSON.stringify({ type: 'pong', t: msg.t }));
+      } else if (msg.type === 'pong') {
+        const lat  = Date.now() - msg.t;
+        const peer = state.peers.find(p => p.peerId === peerId);
+        if (peer) { peer.latency = lat; peer.signal = lat < 50 ? 4 : lat < 100 ? 3 : lat < 200 ? 2 : 1; updateMeshUI(); }
+      }
+    } catch { /* ignore malformed */ }
+  };
+}
+
+async function createWebRTCOffer() {
+  const peerId = generatePeerId();
+  const pc = new RTCPeerConnection(RTC_CONFIG);
+  const dc = pc.createDataChannel('genesis-mesh', { ordered: true });
+  rtcPeers[peerId] = { conn: pc, dc, state: 'offering' };
+  rtcCurrentOffer  = peerId;
+  _setupRTCDataChannel(dc, peerId);
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  return _rtcGatherSDP(pc);
+}
+
+async function acceptWebRTCOffer(encodedOffer) {
+  const offerData = JSON.parse(atob(encodedOffer));
+  const peerId    = generatePeerId();
+  const pc        = new RTCPeerConnection(RTC_CONFIG);
+  rtcPeers[peerId] = { conn: pc, dc: null, state: 'answering' };
+  pc.ondatachannel = e => { rtcPeers[peerId].dc = e.channel; _setupRTCDataChannel(e.channel, peerId); };
+  await pc.setRemoteDescription(new RTCSessionDescription(offerData));
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  return _rtcGatherSDP(pc);
+}
+
+async function completeWebRTCConnection(encodedAnswer) {
+  if (!rtcCurrentOffer || !rtcPeers[rtcCurrentOffer]) {
+    showToast('No pending offer to complete.', 'error');
+    return;
+  }
+  const answerData = JSON.parse(atob(encodedAnswer));
+  await rtcPeers[rtcCurrentOffer].conn.setRemoteDescription(new RTCSessionDescription(answerData));
+  showToast('🔗 Completing WebRTC handshake…', 'info');
 }
 
 /* ── CassAi Vault Data ── */
@@ -533,6 +815,8 @@ function renderIdentity() {
     if (pubEl) pubEl.textContent = identity.publicKey;
     const dateEl = document.getElementById('identity-date');
     if (dateEl) dateEl.textContent = new Date(identity.createdAt).toLocaleDateString();
+    const algoEl = document.getElementById('identity-algo');
+    if (algoEl) algoEl.textContent = identity.algorithm || 'legacy';
   } else {
     setupSection.style.display  = 'block';
     displaySection.style.display = 'none';
@@ -563,7 +847,7 @@ async function renderCreditsTab() {
       <div class="credit-icon">${c.icon || '⭐'}</div>
       <div class="credit-info">
         <div class="credit-title">${escHtml(c.label)}</div>
-        <div class="credit-meta">${new Date(c.timestamp).toLocaleString()} ${c.pending ? '· <span class="text-gold">Pending sync</span>' : ''}</div>
+        <div class="credit-meta">${new Date(c.timestamp).toLocaleString()} ${c.pending ? '· <span class="text-gold">Pending sync</span>' : ''} ${c.signature ? '· <span class="text-cyan" title="' + escHtml(c.signature.slice(0, 20)) + '…">🔏 signed</span>' : ''}</div>
       </div>
       <div class="credit-amount">+${c.amount}</div>
     </div>
@@ -618,7 +902,11 @@ function updateOnlineStatus() {
 
 /* ── Navigation ── */
 function switchTab(tabId) {
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    const active = t.dataset.tab === tabId;
+    t.classList.toggle('active', active);
+    t.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tabId}`));
 
   /* Resize canvas when switching to mesh tab */
@@ -801,13 +1089,20 @@ function wireEvents() {
     });
   }
 
-  /* Identity form submit */
+  /* Identity form submit — async since initIdentity uses SubtleCrypto */
   const identityForm = document.getElementById('identity-form');
   if (identityForm) {
-    identityForm.addEventListener('submit', e => {
+    identityForm.addEventListener('submit', async e => {
       e.preventDefault();
-      const pp = document.getElementById('passphrase-input');
-      if (pp) initIdentity(pp.value);
+      const pp  = document.getElementById('passphrase-input');
+      const btn = identityForm.querySelector('[type="submit"]');
+      if (!pp) return;
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating keys…'; }
+      try {
+        await initIdentity(pp.value);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🛡️ Generate Sovereign Identity'; }
+      }
     });
   }
 
@@ -886,6 +1181,72 @@ function wireEvents() {
       if (state.meshActive) buildMeshNodes();
     }
   });
+
+  /* WebRTC manual signaling */
+  const createOfferBtn = document.getElementById('btn-create-offer');
+  if (createOfferBtn) {
+    createOfferBtn.addEventListener('click', async () => {
+      createOfferBtn.disabled = true;
+      createOfferBtn.textContent = '⏳ Generating…';
+      try {
+        const encoded = await createWebRTCOffer();
+        document.getElementById('webrtc-offer-box').value = encoded;
+        document.getElementById('webrtc-offer-section').style.display = 'block';
+        showToast('📡 Offer created — share with a peer!', 'success');
+      } catch (err) {
+        showToast('WebRTC not supported in this browser.', 'error');
+        console.error('[Genesis] WebRTC offer error', err);
+      } finally {
+        createOfferBtn.disabled = false;
+        createOfferBtn.textContent = '📡 Create Connection Offer';
+      }
+    });
+  }
+
+  const copyOfferBtn = document.getElementById('btn-copy-offer');
+  if (copyOfferBtn) {
+    copyOfferBtn.addEventListener('click', () => {
+      const val = document.getElementById('webrtc-offer-box').value;
+      if (val) copyToClipboard(val);
+    });
+  }
+
+  const acceptSdpBtn = document.getElementById('btn-accept-sdp');
+  if (acceptSdpBtn) {
+    acceptSdpBtn.addEventListener('click', async () => {
+      const pasted = document.getElementById('webrtc-paste-box').value.trim();
+      if (!pasted) { showToast('Paste a peer code first.', 'error'); return; }
+      acceptSdpBtn.disabled = true;
+      acceptSdpBtn.textContent = '⏳ Connecting…';
+      try {
+        const decoded = JSON.parse(atob(pasted));
+        if (decoded.type === 'offer') {
+          const answer = await acceptWebRTCOffer(pasted);
+          document.getElementById('webrtc-answer-box').value = answer;
+          document.getElementById('webrtc-answer-section').style.display = 'block';
+          showToast('✅ Answer generated — send back to initiator!', 'success');
+        } else if (decoded.type === 'answer') {
+          await completeWebRTCConnection(pasted);
+        } else {
+          showToast('Invalid peer code format.', 'error');
+        }
+      } catch (err) {
+        showToast('Invalid peer code or WebRTC error.', 'error');
+        console.error('[Genesis] WebRTC accept error', err);
+      } finally {
+        acceptSdpBtn.disabled = false;
+        acceptSdpBtn.textContent = '🔗 Connect';
+      }
+    });
+  }
+
+  const copyAnswerBtn = document.getElementById('btn-copy-answer');
+  if (copyAnswerBtn) {
+    copyAnswerBtn.addEventListener('click', () => {
+      const val = document.getElementById('webrtc-answer-box').value;
+      if (val) copyToClipboard(val);
+    });
+  }
 }
 
 /* ── DOM Ready ── */

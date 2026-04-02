@@ -943,3 +943,10 @@ body {
 @media (min-width: 481px) {
   body { border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
 }
+
+/* ── Accessibility: visible focus rings ── */
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
