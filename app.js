@@ -14,6 +14,17 @@ const STORE_LEDGER  = 'ledger';
 const STORE_PEERS   = 'peers';
 const STORE_LERR    = 'lerr-cache';
 
+/* ── Tuning constants ── */
+const LERR_CACHE_TTL_MS    = 3_600_000; // 1 hour
+const LERR_MAX_KEY_LENGTH  = 50;        // chars
+const ICE_GATHER_TIMEOUT_MS = 6_000;    // 6 seconds
+
+/* Carbon estimation constants (conservative academic estimates) */
+const MB_PER_SESSION_MINUTE = 0.06;  // MB per session-minute for PWA
+const MB_PER_PEER           = 0.02;  // MB per connected peer per session
+const KG_CO2_PER_MB_P2P     = 0.002; // kg CO₂ per MB via P2P mesh
+const KG_CO2_PER_MB_CLOUD   = 0.006; // kg CO₂ per MB via centralised cloud
+
 /* ── SDG Pantheon Definition ── */
 const PANTHEON = [
   { id: 'cassai',    name: 'CassAi',     emoji: '💰', sdg: 1,  title: 'No Poverty',              color: '#f0c040', rgb: '240,192,64',  panel: 'panel-cassai' },
@@ -113,8 +124,8 @@ async function generateCryptoIdentity() {
   const pubJwk  = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
   const privJwk = await crypto.subtle.exportKey('jwk', keyPair.privateKey);
 
-  // DID derived from the public x-coordinate (first 22 chars of base64url)
-  const did = `did:genesis:${pubJwk.x.slice(0, 22)}`;
+  // DID derived from the full base64url-encoded public x-coordinate
+  const did = `did:genesis:${pubJwk.x}`;
 
   return {
     did,
@@ -513,10 +524,10 @@ async function refreshEnvData() {
   }
 
   /* Session carbon estimates */
-  const dataMB     = parseFloat((sessionMins * 0.06 + state.peers.length * 0.02).toFixed(2));
-  const p2pCO2     = (dataMB * 0.002).toFixed(4);
-  const cloudCO2   = (dataMB * 0.006).toFixed(4);
-  const savedCO2   = (dataMB * 0.004).toFixed(4);
+  const dataMB     = parseFloat((sessionMins * MB_PER_SESSION_MINUTE + state.peers.length * MB_PER_PEER).toFixed(2));
+  const p2pCO2     = (dataMB * KG_CO2_PER_MB_P2P).toFixed(4);
+  const cloudCO2   = (dataMB * KG_CO2_PER_MB_CLOUD).toFixed(4);
+  const savedCO2   = (dataMB * (KG_CO2_PER_MB_CLOUD - KG_CO2_PER_MB_P2P)).toFixed(4);
 
   metrics.push(
     { label: 'Session Active',        value: sessionMins,                                    max: 120, unit: 'min' },
@@ -652,11 +663,11 @@ async function lerrQuery(rawQuery) {
 
   // Phase 2: IndexedDB cache — 80% energy saved vs cloud
   try {
-    const cacheKey = rawQuery.toLowerCase().trim().slice(0, 50);
+    const cacheKey = rawQuery.toLowerCase().trim().slice(0, LERR_MAX_KEY_LENGTH);
     const tx  = state.db.transaction(STORE_LERR, 'readonly');
     const req = tx.objectStore(STORE_LERR).get(cacheKey);
     const cached = await new Promise(r => { req.onsuccess = () => r(req.result); req.onerror = () => r(null); });
-    if (cached && (Date.now() - cached.ts) < 3_600_000) {
+    if (cached && (Date.now() - cached.ts) < LERR_CACHE_TTL_MS) {
       state.lerrStats.cacheHits++;
       return { result: cached.value, source: 'idb-cache', energySaved: 80 };
     }
@@ -670,7 +681,7 @@ async function lerrCacheSet(key, value) {
   if (!state.db) return;
   try {
     const tx = state.db.transaction(STORE_LERR, 'readwrite');
-    tx.objectStore(STORE_LERR).put({ key: key.slice(0, 50), value, ts: Date.now() });
+    tx.objectStore(STORE_LERR).put({ key: key.slice(0, LERR_MAX_KEY_LENGTH), value, ts: Date.now() });
   } catch { /* ignore */ }
 }
 
@@ -692,7 +703,7 @@ function _rtcGatherSDP(pc) {
       if (pc.localDescription) {
         resolve(btoa(JSON.stringify({ type: pc.localDescription.type, sdp: pc.localDescription.sdp })));
       }
-    }, 6000);
+    }, ICE_GATHER_TIMEOUT_MS);
   });
 }
 
@@ -769,14 +780,14 @@ async function completeWebRTCConnection(encodedAnswer) {
 /* ── CassAi Vault Data ── */
 function refreshVaultData() {
   const balance = state.rwlBalance;
-  document.getElementById('vault-rwl-balance')
-    && (document.getElementById('vault-rwl-balance').textContent = balance.toLocaleString() + ' RWL');
-  document.getElementById('vault-equity')
-    && (document.getElementById('vault-equity').textContent = (balance * 0.35).toFixed(0) + ' RWL');
-  document.getElementById('vault-reserves')
-    && (document.getElementById('vault-reserves').textContent = (balance * 0.45).toFixed(0) + ' RWL');
-  document.getElementById('vault-staked')
-    && (document.getElementById('vault-staked').textContent = (balance * 0.20).toFixed(0) + ' RWL');
+  const rwlEl      = document.getElementById('vault-rwl-balance');
+  const equityEl   = document.getElementById('vault-equity');
+  const reservesEl = document.getElementById('vault-reserves');
+  const stakedEl   = document.getElementById('vault-staked');
+  if (rwlEl)      rwlEl.textContent      = balance.toLocaleString() + ' RWL';
+  if (equityEl)   equityEl.textContent   = (balance * 0.35).toFixed(0) + ' RWL';
+  if (reservesEl) reservesEl.textContent = (balance * 0.45).toFixed(0) + ' RWL';
+  if (stakedEl)   stakedEl.textContent   = (balance * 0.20).toFixed(0) + ' RWL';
 }
 
 /* ── Odin Food Logistics Data ── */

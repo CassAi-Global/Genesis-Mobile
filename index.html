@@ -719,15 +719,16 @@
 <!-- PWA Install prompt helper -->
 <script>
   let deferredPrompt;
+  const INSTALL_PROMPT_DELAY_MS = 4000;
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     deferredPrompt = e;
-    /* Show subtle hint after 4 seconds if not already installed */
+    /* Show subtle hint after a short delay if not already installed */
     setTimeout(() => {
       if (deferredPrompt && typeof showToast === 'function') {
         showToast('📱 Add Genesis Mobile to your home screen for the full experience!', 'info');
       }
-    }, 4000);
+    }, INSTALL_PROMPT_DELAY_MS);
   });
 
   /* Fix node panel header visibility after grid renders */
